@@ -1,10 +1,11 @@
 import { useMemo } from "react";
 import { WEEKDAY_NAMES, dayLabel, toKey, todayKey, weekDays } from "../lib/dates";
 import { paletteOf } from "../lib/tagColors";
-import { filterByTag, useApp } from "../store";
+import { filterByTag, googleEventsOn, useApp } from "../store";
 import type { Tag, Task } from "../types";
 import { Checkbox, TagLabel, addButton } from "./common";
 import { useDateDroppable, useTaskDraggable } from "./dnd";
+import { GoogleEventList } from "./GoogleEvents";
 
 /** ② 날짜 선택 시 — 주간 바 + 해당 날짜 체크리스트 (F-5) */
 export function WeekView() {
@@ -74,7 +75,11 @@ function WeekDay({
 }
 
 function DayChecklist() {
-  const { selectedDate, tasks, tags, tagFilter, detailId, openForm } = useApp();
+  const { selectedDate, tasks, tags, tagFilter, detailId, openForm, googleEvents } = useApp();
+  const events = useMemo(
+    () => (tagFilter ? [] : googleEventsOn(googleEvents, selectedDate)),
+    [googleEvents, selectedDate, tagFilter],
+  );
   const items = useMemo(
     () => filterByTag(tasks, tagFilter).filter((t) => t.date === selectedDate),
     [tasks, tagFilter, selectedDate],
@@ -84,6 +89,7 @@ function DayChecklist() {
   return (
     <div className="mt-5 flex min-h-0 flex-1 flex-col">
       <h2 className="mb-3 font-bold">{dayLabel(selectedDate)} 체크리스트</h2>
+      <GoogleEventList events={events} />
       <ul className="-mr-1 flex-1 space-y-2.5 overflow-y-auto pr-1 pb-1">
         {items.map((t) => (
           <ChecklistItem key={t.id} task={t} tag={t.tagId ? tagMap.get(t.tagId) : undefined} selected={t.id === detailId} />

@@ -6,7 +6,7 @@
  */
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import type { GoogleStatus, Settings, Tag, TagInput, Task, TaskInput } from "../types";
+import type { GoogleEvent, GoogleStatus, Settings, Tag, TagInput, Task, TaskInput } from "../types";
 import { mockBackend } from "./mock";
 
 export const isTauri = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
@@ -22,6 +22,8 @@ export const api = {
   setTaskDone: (id: string, done: boolean) => call<Task>("set_task_done", { id, done }),
   setTaskDate: (id: string, date: string | null) => call<Task>("set_task_date", { id, date }),
   deleteTask: (id: string) => call<void>("delete_task", { id }),
+
+  listGoogleEvents: () => call<GoogleEvent[]>("list_google_events"),
 
   listTags: () => call<Tag[]>("list_tags"),
   createTag: (input: TagInput) => call<Tag>("create_tag", { input }),

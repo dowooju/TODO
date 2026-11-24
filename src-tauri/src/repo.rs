@@ -6,7 +6,7 @@ use rusqlite::{params, Connection, OptionalExtension, Row};
 use uuid::Uuid;
 
 use crate::error::{AppError, AppResult};
-use crate::models::{Settings, Tag, TagInput, Task, TaskInput};
+use crate::models::{GoogleEvent, Settings, Tag, TagInput, Task, TaskInput};
 
 pub const TAG_COLORS: &[&str] = &["purple", "yellow", "sky", "orange", "green", "pink", "teal", "gray"];
 
@@ -212,6 +212,52 @@ pub fn update_tag(conn: &Connection, id: &str, input: TagInput) -> AppResult<Tag
 pub fn delete_tag(conn: &Connection, id: &str) -> AppResult<()> {
     conn.execute("DELETE FROM tags WHERE id = ?1", [id])?;
     Ok(())
+}
+
+// ───────────────────────── 구글 일정 (표시용) ─────────────────────────
+
+pub fn list_google_events(conn: &Connection) -> AppResult<Vec<GoogleEvent>> {
+    let mut stmt = conn.prepare(
+        "SELECT id, summary, start_date, end_date, start_time, end_time, html_link
+         FROM google_events ORDER BY start_date, start_time IS NOT NULL, start_time",
+    )?;
+    let rows = stmt.query_map([], |r| {
+        Ok(GoogleEvent {
+            id: r.get(0)?,
+            summary: r.get(1)?,
+            start_date: r.get(2)?,
+            end_date: r.get(3)?,
+            start_time: r.get(4)?,
+            end_time: r.get(5)?,
+            html_link: r.get(6)?,
+        })
+    })?;
+    Ok(rows.collect::<Result<_, _>>()?)
+}
+
+/// 표시용 일정 캐시를 통째로 바꾼다. 바뀐 것이 있으면 true
+pub fn replace_google_events(conn: &Connection, events: &[GoogleEvent]) -> AppResult<bool> {
+    if list_google_events(conn)? == sorted(events) {
+        return Ok(false);
+    }
+    conn.execute("DELETE FROM google_events", [])?;
+    let mut stmt = conn.prepare(
+        "INSERT OR REPLACE INTO google_events (id, summary, start_date, end_date, start_time, end_time, html_link)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+    )?;
+    for e in events {
+        stmt.execute(params![e.id, e.summary, e.start_date, e.end_date, e.start_time, e.end_time, e.html_link])?;
+    }
+    Ok(true)
+}
+
+fn sorted(events: &[GoogleEvent]) -> Vec<GoogleEvent> {
+    let mut v = events.to_vec();
+    v.sort_by(|a, b| {
+        (&a.start_date, a.start_time.is_some(), &a.start_time).cmp(&(&b.start_date, b.start_time.is_some(), &b.start_time))
+    });
+    v.dedup_by(|a, b| a.id == b.id);
+    v
 }
 
 // ───────────────────────── 설정 ─────────────────────────

@@ -123,6 +123,7 @@ fn cycle(app: &AppHandle, db: &Db, auth: &GoogleAuth, pull_now: bool) -> AppResu
     let mut changed = push(db, &cal)?;
     if pull_now {
         changed |= pull(db, &cal)?;
+        changed |= refresh_display_events(db, &cal)?;
         // 받는 동안 쌓인 변경도 바로 보낸다
         changed |= push(db, &cal)?;
     }
@@ -267,6 +268,30 @@ fn pull(db: &Db, cal: &Calendar) -> AppResult<bool> {
     Ok(changed)
 }
 
+/// 달력에 함께 보여줄 구글 일정(앱이 만든 일정 제외)을 3개월 전 ~ 12개월 뒤 범위로 새로 받는다 (F-24)
+fn refresh_display_events(db: &Db, cal: &Calendar) -> AppResult<bool> {
+    let now = Utc::now();
+    let fmt = |d: chrono::DateTime<Utc>| d.to_rfc3339_opts(chrono::SecondsFormat::Secs, true);
+    let (min, max) = (fmt(now - chrono::Duration::days(92)), fmt(now + chrono::Duration::days(366)));
+    let mut events = Vec::new();
+    let mut page: Option<String> = None;
+    loop {
+        match cal.list_range(&min, &max, page.as_deref())? {
+            Reply::Status(s) => return Err(unexpected(s)),
+            Reply::Ok(p) => {
+                events.extend(
+                    p.items.iter().filter(|e| e.app_task_id().is_none() && !e.is_cancelled()).filter_map(|e| e.to_display()),
+                );
+                match p.next_page_token {
+                    Some(next) => page = Some(next),
+                    None => break,
+                }
+            }
+        }
+    }
+    repo::replace_google_events(&db.conn(), &events)
+}
+
 // ───────────────────────── 로그인 / 로그아웃 ─────────────────────────
 
 /// 로그인 직후: 처음부터 다시 받고, 날짜 있는 할 일을 모두 올린다
@@ -281,7 +306,7 @@ pub fn on_login(db: &Db) -> AppResult<()> {
 /// 로그아웃: 동기화 상태를 모두 지운다 (할 일은 그대로)
 pub fn on_logout(db: &Db) -> AppResult<()> {
     let conn = db.conn();
-    conn.execute_batch("DELETE FROM outbox; UPDATE tasks SET google_etag = NULL;")?;
+    conn.execute_batch("DELETE FROM outbox; DELETE FROM google_events; UPDATE tasks SET google_etag = NULL;")?;
     for key in [KEY_SYNC_TOKEN, KEY_LAST_SYNC, KEY_LAST_ERROR] {
         repo::put_setting(&conn, key, "")?;
     }

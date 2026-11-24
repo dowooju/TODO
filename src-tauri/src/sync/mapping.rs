@@ -127,6 +127,38 @@ impl Event {
         DateTime::parse_from_rfc3339(self.updated.as_deref()?).ok().map(|d| d.with_timezone(&chrono::Utc))
     }
 
+    /// 달력 표시용으로 바꾼다. 종일 일정의 end.date 는 포함되지 않으므로 하루 뺀다.
+    pub fn to_display(&self) -> Option<crate::models::GoogleEvent> {
+        let (start, end) = (self.start.as_ref()?, self.end.as_ref()?);
+        let local = |s: &str| DateTime::parse_from_rfc3339(s).ok().map(|d| d.with_timezone(&Local));
+        let (start_date, end_date, start_time, end_time) = match (&start.date, &end.date) {
+            (Some(s), Some(e)) => {
+                let last = NaiveDate::parse_from_str(e, "%Y-%m-%d").ok()? - Duration::days(1);
+                (s.clone(), last.format("%Y-%m-%d").to_string().max(s.clone()), None, None)
+            }
+            _ => {
+                let (s, e) = (local(start.date_time.as_deref()?)?, local(end.date_time.as_deref()?)?);
+                // 자정에 끝나는 일정은 전날까지로 본다
+                let e_day = if e.format("%H:%M").to_string() == "00:00" && e > s { e - Duration::minutes(1) } else { e };
+                (
+                    s.format("%Y-%m-%d").to_string(),
+                    e_day.format("%Y-%m-%d").to_string(),
+                    Some(s.format("%H:%M").to_string()),
+                    Some(e.format("%H:%M").to_string()),
+                )
+            }
+        };
+        Some(crate::models::GoogleEvent {
+            id: self.id.clone(),
+            summary: self.summary.clone().filter(|s| !s.trim().is_empty()).unwrap_or_else(|| "(제목 없음)".into()),
+            start_date,
+            end_date,
+            start_time,
+            end_time,
+            html_link: self.html_link.clone(),
+        })
+    }
+
     /// (날짜, 마감 시간). 시간 일정은 끝 시각을 마감으로 본다.
     pub fn date_and_time(&self) -> Option<(String, Option<String>)> {
         let start = self.start.as_ref()?;
@@ -285,6 +317,19 @@ mod tests {
         assert_eq!(body["end"]["timeZone"], "Asia/Seoul");
         let ev: Event = serde_json::from_value(body).unwrap();
         assert_eq!(ev.date_and_time(), Some(("2026-11-24".into(), Some("23:59".into()))));
+    }
+
+    #[test]
+    fn all_day_display_range_is_inclusive() {
+        let ev = Event {
+            id: "g1".into(),
+            summary: Some("제주 여행".into()),
+            start: Some(EventTime { date: Some("2026-11-27".into()), date_time: None }),
+            end: Some(EventTime { date: Some("2026-11-30".into()), date_time: None }),
+            ..Default::default()
+        };
+        let d = ev.to_display().unwrap();
+        assert_eq!((d.start_date.as_str(), d.end_date.as_str(), d.start_time), ("2026-11-27", "2026-11-29", None));
     }
 
     #[test]

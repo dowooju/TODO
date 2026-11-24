@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { startOfMonth } from "date-fns";
 import { api } from "./api";
 import { fromKey, todayKey } from "./lib/dates";
-import type { GoogleStatus, Settings, Tag, TagInput, Task, TaskInput } from "./types";
+import type { GoogleEvent, GoogleStatus, Settings, Tag, TagInput, Task, TaskInput } from "./types";
 
 /** 할 일 추가/수정 폼 상태 */
 export type FormState = { mode: "create"; date: string | null } | { mode: "edit"; taskId: string } | null;
@@ -11,6 +11,8 @@ interface AppState {
   // ── 데이터 (Rust 가 원본, 여기는 화면용 사본) ──
   tasks: Task[];
   tags: Tag[];
+  /** 구글 캘린더 일정 (표시용) */
+  googleEvents: GoogleEvent[];
   settings: Settings;
   loaded: boolean;
   error: string | null;
@@ -70,6 +72,7 @@ export const useApp = create<AppState>((set, get) => {
   return {
     tasks: [],
     tags: [],
+    googleEvents: [],
     settings: { notificationsEnabled: true },
     loaded: false,
     error: null,
@@ -98,12 +101,18 @@ export const useApp = create<AppState>((set, get) => {
 
     load: async () => {
       try {
-        const [tasks, tags, settings] = await Promise.all([api.listTasks(), api.listTags(), api.getSettings()]);
+        const [tasks, tags, settings, googleEvents] = await Promise.all([
+          api.listTasks(),
+          api.listTags(),
+          api.getSettings(),
+          api.listGoogleEvents(),
+        ]);
         const { detailId, tagFilter } = get();
         set({
           tasks,
           tags,
           settings,
+          googleEvents,
           loaded: true,
           // 지워진 항목/태그를 가리키고 있으면 닫는다 (예: 구글 캘린더에서 삭제됨)
           detailId: detailId && tasks.some((t) => t.id === detailId) ? detailId : null,
@@ -172,6 +181,13 @@ export function tasksByDate(tasks: Task[]): Map<string, Task[]> {
     map.set(t.date, list);
   }
   return map;
+}
+
+/** 그 날짜에 걸친 구글 일정 (여러 날 일정 포함). 종일 일정이 먼저, 그다음 시작 시각 순 */
+export function googleEventsOn(events: GoogleEvent[], dateKey: string): GoogleEvent[] {
+  return events
+    .filter((e) => e.startDate <= dateKey && dateKey <= e.endDate)
+    .sort((a, b) => (a.startTime ?? "").localeCompare(b.startTime ?? ""));
 }
 
 /** "언젠가 할 일": 날짜 없는 할 일을 태그 순서대로 묶고, 태그 없는 항목은 마지막 (F-17) */

@@ -69,6 +69,7 @@ pub fn run() {
             commands::set_task_done,
             commands::set_task_date,
             commands::delete_task,
+            commands::list_google_events,
             commands::list_tags,
             commands::create_tag,
             commands::update_tag,

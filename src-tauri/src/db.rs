@@ -78,7 +78,22 @@ CREATE TABLE outbox (
 CREATE INDEX idx_outbox_task ON outbox(task_id);
 "#;
 
-const MIGRATIONS: &[&str] = &[V1_CORE, V2_NOTIFICATIONS, V3_GOOGLE_SYNC];
+/// v4: 달력에 함께 보여줄 구글 캘린더 일정 캐시 (앱이 만든 일정은 제외, F-24)
+/// 동기화 때마다 표시 범위 전체를 새로 받아 통째로 바꾼다. 반복 일정은 하나하나 펼친 상태로 저장된다.
+const V4_GOOGLE_EVENTS: &str = r#"
+CREATE TABLE google_events (
+    id          TEXT PRIMARY KEY,
+    summary     TEXT NOT NULL,
+    start_date  TEXT NOT NULL,   -- YYYY-MM-DD (로컬)
+    end_date    TEXT NOT NULL,   -- YYYY-MM-DD, 이 날짜까지 포함
+    start_time  TEXT,            -- HH:MM, 종일 일정이면 NULL
+    end_time    TEXT,
+    html_link   TEXT
+);
+CREATE INDEX idx_google_events_start ON google_events(start_date);
+"#;
+
+const MIGRATIONS: &[&str] = &[V1_CORE, V2_NOTIFICATIONS, V3_GOOGLE_SYNC, V4_GOOGLE_EVENTS];
 
 /// 백그라운드 작업(알림, 동기화)과 명령 처리기가 함께 쓰는 DB 핸들
 #[derive(Clone)]

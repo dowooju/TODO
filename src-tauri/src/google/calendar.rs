@@ -90,6 +90,23 @@ impl<'a> Calendar<'a> {
         Ok(if res.status().is_success() { Reply::Ok(()) } else { Reply::Status(res.status().as_u16()) })
     }
 
+    /// 표시용: 기간 안의 일정. 반복 일정은 하나하나 펼쳐서(singleEvents) 시작 시각 순으로 받는다.
+    pub fn list_range(&self, time_min: &str, time_max: &str, page_token: Option<&str>) -> AppResult<Reply<EventsPage>> {
+        Self::json(self.send(|c| {
+            let mut q: Vec<(&str, &str)> = vec![
+                ("maxResults", "250"),
+                ("singleEvents", "true"),
+                ("orderBy", "startTime"),
+                ("timeMin", time_min),
+                ("timeMax", time_max),
+            ];
+            if let Some(p) = page_token {
+                q.push(("pageToken", p));
+            }
+            c.get(format!("{CALENDAR_API}/events")).query(&q)
+        })?)
+    }
+
     /// 일정 목록 한 페이지. `sync_token` 이 있으면 그 뒤로 바뀐 것만(삭제 포함) 받는다.
     pub fn list(&self, sync_token: Option<&str>, page_token: Option<&str>) -> AppResult<Reply<EventsPage>> {
         Self::json(self.send(|c| {

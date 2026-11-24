@@ -7,7 +7,7 @@ use tauri::{AppHandle, Emitter, Manager, State};
 
 use crate::db::Db;
 use crate::error::{AppError, AppResult};
-use crate::models::{Settings, Tag, TagInput, Task, TaskInput};
+use crate::models::{GoogleEvent, Settings, Tag, TagInput, Task, TaskInput};
 use crate::repo;
 use crate::sync::{outbox, SyncHandle};
 
@@ -85,6 +85,12 @@ pub fn delete_task(app: AppHandle, db: State<'_, Db>, id: String) -> AppResult<(
         repo::delete_task(c, &id)?;
         Ok((id.clone(), None, ()))
     })
+}
+
+/// 달력에 함께 보여줄 구글 캘린더 일정 (F-24)
+#[tauri::command]
+pub fn list_google_events(db: State<'_, Db>) -> AppResult<Vec<GoogleEvent>> {
+    repo::list_google_events(&db.conn())
 }
 
 #[tauri::command]

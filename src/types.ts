@@ -35,6 +35,18 @@ export interface TagInput {
   color: TagColor;
 }
 
+/** 달력에 함께 보여주는 구글 캘린더 일정 (읽기 전용) */
+export interface GoogleEvent {
+  id: string;
+  summary: string;
+  startDate: string;
+  /** 이 날짜까지 포함 */
+  endDate: string;
+  startTime: string | null;
+  endTime: string | null;
+  htmlLink: string | null;
+}
+
 export interface GoogleStatus {
   /** OAuth 클라이언트 ID 가 들어간 채로 빌드됐는지 */
   configured: boolean;

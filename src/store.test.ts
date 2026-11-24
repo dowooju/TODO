@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { somedayTasks, tasksByDate } from "./store";
+import { googleEventsOn, somedayTasks, tasksByDate } from "./store";
 import type { Tag, Task } from "./types";
 
 const tag = (id: string, sortOrder: number): Tag => ({ id, name: id, color: "purple", sortOrder });
@@ -41,5 +41,22 @@ describe("tasksByDate", () => {
     const map = tasksByDate([task("a", 1, { date: "2026-11-24" }), task("b", 2), task("c", 3, { date: "2026-11-24" })]);
     expect(map.get("2026-11-24")?.map((t) => t.id)).toEqual(["a", "c"]);
     expect(map.size).toBe(1);
+  });
+});
+
+describe("googleEventsOn", () => {
+  it("여러 날 일정은 걸친 날짜마다 나오고, 종일 일정이 먼저 온다", () => {
+    const ev = (id: string, startDate: string, endDate: string, startTime: string | null = null) => ({
+      id,
+      summary: id,
+      startDate,
+      endDate,
+      startTime,
+      endTime: null,
+      htmlLink: null,
+    });
+    const events = [ev("회의", "2026-11-28", "2026-11-28", "14:00"), ev("여행", "2026-11-27", "2026-11-29")];
+    expect(googleEventsOn(events, "2026-11-28").map((e) => e.id)).toEqual(["여행", "회의"]);
+    expect(googleEventsOn(events, "2026-11-30")).toEqual([]);
   });
 });

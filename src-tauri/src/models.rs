@@ -46,6 +46,20 @@ pub struct TagInput {
     pub color: String,
 }
 
+/// 달력에 함께 보여주는 구글 캘린더 일정 (읽기 전용, F-24)
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct GoogleEvent {
+    pub id: String,
+    pub summary: String,
+    pub start_date: String,
+    /// 이 날짜까지 포함
+    pub end_date: String,
+    pub start_time: Option<String>,
+    pub end_time: Option<String>,
+    pub html_link: Option<String>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct Settings {
