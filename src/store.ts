@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { startOfMonth } from "date-fns";
 import { api } from "./api";
 import { fromKey, todayKey } from "./lib/dates";
-import type { Settings, Tag, TagInput, Task, TaskInput } from "./types";
+import type { GoogleStatus, Settings, Tag, TagInput, Task, TaskInput } from "./types";
 
 /** 할 일 추가/수정 폼 상태 */
 export type FormState = { mode: "create"; date: string | null } | { mode: "edit"; taskId: string } | null;
@@ -26,6 +26,13 @@ interface AppState {
   /** 태그 필터 (F-18) */
   tagFilter: string | null;
   form: FormState;
+
+  /** 구글 연동 상태. null 이면 아직 확인 전 */
+  google: GoogleStatus | null;
+  /** 클라이언트 ID 가 없는 개발 빌드에서 로그인을 건너뛰었는지 */
+  googleSkipped: boolean;
+  loadGoogle: () => Promise<void>;
+  skipGoogle: () => void;
 
   load: () => Promise<void>;
   showError: (e: unknown) => void;
@@ -73,6 +80,21 @@ export const useApp = create<AppState>((set, get) => {
     detailId: null,
     tagFilter: null,
     form: null,
+
+    google: null,
+    googleSkipped: globalThis.localStorage?.getItem("google-skip") === "1",
+    loadGoogle: async () => {
+      try {
+        set({ google: await api.googleStatus() });
+      } catch (e) {
+        get().showError(e);
+        set({ google: { configured: false, loggedIn: false, account: null } });
+      }
+    },
+    skipGoogle: () => {
+      globalThis.localStorage?.setItem("google-skip", "1");
+      set({ googleSkipped: true });
+    },
 
     load: async () => {
       try {

@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { api } from "../api";
 import { useApp } from "../store";
+import { GoogleAccount } from "./GoogleAccount";
 import { Modal } from "./common";
 
 /** 설정: 마감 알림 켜기/끄기 (F-20), Windows 시작 시 자동 실행 */
@@ -26,6 +27,7 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
   return (
     <Modal title="설정" onClose={onClose}>
       <div className="divide-y divide-gray-100">
+        <GoogleAccount />
         <Row
           title="마감 알림"
           desc="날짜와 마감 시간이 있는 할 일을 마감 10분 전에 Windows 알림으로 알려줘요. 완료한 할 일은 알리지 않아요."

@@ -2,13 +2,14 @@
  * 브라우저 전용 mock 백엔드. Rust 쪽 repo.rs 와 같은 규칙을 흉내 낸다.
  * 실제 앱(Tauri)에서는 쓰이지 않는다.
  */
-import type { Settings, Tag, Task, TaskInput } from "../types";
+import type { GoogleStatus, Settings, Tag, Task, TaskInput } from "../types";
 
 interface MockData {
   tasks: Task[];
   tags: Tag[];
   settings: Settings;
   autostart?: boolean;
+  google?: GoogleStatus;
 }
 
 const STORAGE_KEY = "todo-calendar-mock";
@@ -122,9 +123,13 @@ const handlers: Record<string, Handler> = {
   save_settings: ({ settings }) => (data.settings = settings),
   get_autostart: () => data.autostart ?? true,
   set_autostart: ({ enabled }) => (data.autostart = enabled),
+  // 브라우저 미리보기에서는 구글 연동이 설정되지 않은 상태로 본다
+  google_status: () => data.google ?? { configured: false, loggedIn: false, account: null },
+  google_login: () => (data.google = { configured: true, loggedIn: true, account: "me@example.com" }),
+  google_logout: () => (data.google = { configured: true, loggedIn: false, account: null }),
 };
 
-const READ_ONLY = new Set(["list_tasks", "list_tags", "get_settings", "get_autostart"]);
+const READ_ONLY = new Set(["list_tasks", "list_tags", "get_settings", "get_autostart", "google_status"]);
 
 export const mockBackend = {
   async call<T>(cmd: string, args: Record<string, unknown> = {}): Promise<T> {

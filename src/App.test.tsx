@@ -22,7 +22,14 @@ const task = (id: string, sortOrder: number, extra: Partial<Task> = {}): Task =>
 });
 
 beforeEach(() => {
-  useApp.setState({ view: "month", detailId: null, tagFilter: null, form: null, selectedDate: todayKey() });
+  useApp.setState({
+    view: "month",
+    detailId: null,
+    tagFilter: null,
+    form: null,
+    selectedDate: todayKey(),
+    googleSkipped: true,
+  });
 });
 
 describe("App", () => {
@@ -66,5 +73,27 @@ describe("App", () => {
 
     expect(await screen.findByRole("button", { name: new RegExp(`${todayKey()} 할 일 1개`) })).toBeInTheDocument();
     expect(within(panel).queryByText("동생이랑 게임하기")).not.toBeInTheDocument();
+  });
+});
+
+describe("구글 로그인 (F-23)", () => {
+  it("클라이언트 ID 가 설정된 빌드에서 로그인하지 않았으면 로그인 화면을 보여준다", async () => {
+    mockBackend.reset({ google: { configured: true, loggedIn: false, account: null } });
+    useApp.setState({ googleSkipped: false });
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(await screen.findByRole("button", { name: /Google 계정으로 로그인/ }));
+    expect(await screen.findByRole("region", { name: "월간 달력" })).toBeInTheDocument();
+  });
+
+  it("클라이언트 ID 가 없는 개발 빌드는 건너뛸 수 있다", async () => {
+    mockBackend.reset();
+    useApp.setState({ googleSkipped: false });
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(await screen.findByRole("button", { name: /구글 연동 없이 시작하기/ }));
+    expect(await screen.findByRole("region", { name: "월간 달력" })).toBeInTheDocument();
   });
 });

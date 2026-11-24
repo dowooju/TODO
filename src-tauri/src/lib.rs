@@ -1,6 +1,7 @@
 mod commands;
 mod db;
 mod error;
+mod google;
 mod models;
 mod notifier;
 mod repo;
@@ -11,6 +12,7 @@ use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
 use tauri_plugin_log::{RotationStrategy, Target, TargetKind};
 
 use crate::db::Db;
+use crate::google::auth::GoogleAuth;
 
 /// Windows 시작 시 자동 실행될 때 붙는 인자. 이때는 창 없이 트레이에서만 시작한다.
 const AUTOSTART_ARG: &str = "--autostart";
@@ -33,6 +35,7 @@ pub fn run() {
                 .build(),
         )
         .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_opener::init())
         // Windows 시작 시 자동 실행 (레지스트리 HKCU\...\Run 에 등록, 관리자 권한 불필요)
         .plugin(tauri_plugin_autostart::init(MacosLauncher::LaunchAgent, Some(vec![AUTOSTART_ARG])))
         .setup(|app| {
@@ -41,6 +44,7 @@ pub fn run() {
             let db = Db::open(&db_path)?;
             log::info!("DB 열림: {}", db_path.display());
             app.manage(db.clone());
+            app.manage(GoogleAuth::default());
 
             init_autostart(app.handle(), &db);
             tray::setup_tray(app.handle())?;
@@ -69,6 +73,9 @@ pub fn run() {
             commands::save_settings,
             commands::get_autostart,
             commands::set_autostart,
+            google::google_status,
+            google::google_login,
+            google::google_logout,
         ])
         .build(tauri::generate_context!())
         .expect("앱을 초기화하지 못했습니다");

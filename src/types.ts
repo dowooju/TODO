@@ -35,6 +35,13 @@ export interface TagInput {
   color: TagColor;
 }
 
+export interface GoogleStatus {
+  /** OAuth 클라이언트 ID 가 들어간 채로 빌드됐는지 */
+  configured: boolean;
+  loggedIn: boolean;
+  account: string | null;
+}
+
 export interface Settings {
   notificationsEnabled: boolean;
 }

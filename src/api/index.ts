@@ -6,7 +6,7 @@
  */
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import type { Settings, Tag, TagInput, Task, TaskInput } from "../types";
+import type { GoogleStatus, Settings, Tag, TagInput, Task, TaskInput } from "../types";
 import { mockBackend } from "./mock";
 
 export const isTauri = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
@@ -33,7 +33,17 @@ export const api = {
 
   getAutostart: () => call<boolean>("get_autostart"),
   setAutostart: (enabled: boolean) => call<boolean>("set_autostart", { enabled }),
+
+  googleStatus: () => call<GoogleStatus>("google_status"),
+  googleLogin: () => call<GoogleStatus>("google_login"),
+  googleLogout: () => call<GoogleStatus>("google_logout"),
 };
+
+/** 구글 로그인 상태가 바뀌었을 때 */
+export async function onGoogleAuthChanged(handler: () => void): Promise<() => void> {
+  if (isTauri) return listen("google-auth-changed", handler);
+  return () => {};
+}
 
 /** 백엔드에서 데이터가 바뀌었을 때(다른 창, 동기화 등) 알림을 받는다 */
 export async function onDataChanged(handler: () => void): Promise<() => void> {
