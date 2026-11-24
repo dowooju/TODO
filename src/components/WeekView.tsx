@@ -4,6 +4,7 @@ import { paletteOf } from "../lib/tagColors";
 import { filterByTag, useApp } from "../store";
 import type { Tag, Task } from "../types";
 import { Checkbox, TagLabel, addButton } from "./common";
+import { useDateDroppable, useTaskDraggable } from "./dnd";
 
 /** ② 날짜 선택 시 — 주간 바 + 해당 날짜 체크리스트 (F-5) */
 export function WeekView() {
@@ -22,30 +23,53 @@ function WeekBar() {
 
   return (
     <div className="grid grid-cols-7 border-l border-t border-[#ece3e6]">
-      {days.map((d, i) => {
-        const key = toKey(d);
-        const selected = key === selectedDate;
-        return (
-          <button
-            key={key}
-            type="button"
-            data-date={key}
-            aria-pressed={selected}
-            aria-label={`${key} 선택`}
-            onClick={() => openDay(key)}
-            className={`relative flex flex-col items-center border-b border-r border-[#ece3e6] py-2.5 leading-5 ${
-              selected ? "bg-brand-400 font-bold text-white" : "bg-white hover:bg-brand-50"
-            }`}
-          >
-            <span className={selected ? "" : i === 0 ? "text-sunday" : i === 6 ? "text-saturday" : ""}>
-              {WEEKDAY_NAMES[i]}
-            </span>
-            <span>{d.getDate()}</span>
-            {key === today && !selected && <span className="absolute top-1.5 right-2 h-1.5 w-1.5 rounded-full bg-brand-400" />}
-          </button>
-        );
-      })}
+      {days.map((d, i) => (
+        <WeekDay
+          key={toKey(d)}
+          date={d}
+          index={i}
+          selected={toKey(d) === selectedDate}
+          isToday={toKey(d) === today}
+          onOpen={() => openDay(toKey(d))}
+        />
+      ))}
     </div>
+  );
+}
+
+function WeekDay({
+  date,
+  index,
+  selected,
+  isToday,
+  onOpen,
+}: {
+  date: Date;
+  index: number;
+  selected: boolean;
+  isToday: boolean;
+  onOpen: () => void;
+}) {
+  const key = toKey(date);
+  const { dropRef, isOver } = useDateDroppable(key);
+  return (
+    <button
+      ref={dropRef}
+      type="button"
+      data-date={key}
+      aria-pressed={selected}
+      aria-label={`${key} 선택`}
+      onClick={onOpen}
+      className={`relative flex flex-col items-center border-b border-r border-[#ece3e6] py-2.5 leading-5 ${
+        selected ? "bg-brand-400 font-bold text-white" : "bg-white hover:bg-brand-50"
+      } ${isOver ? "z-10 ring-2 ring-brand-500 ring-inset" : ""}`}
+    >
+      <span className={selected ? "" : index === 0 ? "text-sunday" : index === 6 ? "text-saturday" : ""}>
+        {WEEKDAY_NAMES[index]}
+      </span>
+      <span>{date.getDate()}</span>
+      {isToday && !selected && <span className="absolute top-1.5 right-2 h-1.5 w-1.5 rounded-full bg-brand-400" />}
+    </button>
   );
 }
 
@@ -81,10 +105,11 @@ function DayChecklist() {
 
 function ChecklistItem({ task, tag, selected }: { task: Task; tag: Tag | undefined; selected: boolean }) {
   const { toggleDone, openDetail } = useApp();
+  const { dragRef, dragProps, isDragging } = useTaskDraggable(task.id);
   const p = paletteOf(tag, task.done);
 
   return (
-    <li>
+    <li ref={dragRef} {...dragProps} className={isDragging ? "opacity-40" : ""}>
       <div
         role="button"
         tabIndex={0}

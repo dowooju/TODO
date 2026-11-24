@@ -4,6 +4,7 @@ import { WEEKDAY_NAMES, monthCells, monthLabel, toKey, todayKey, weekdayColor } 
 import { paletteOf } from "../lib/tagColors";
 import { filterByTag, tasksByDate, useApp } from "../store";
 import type { Tag, Task } from "../types";
+import { useDateDroppable } from "./dnd";
 
 /** ① 초기 화면 — 월간 달력 (F-1 ~ F-3) */
 export function MonthCalendar() {
@@ -79,15 +80,17 @@ function DayCell({
   tagMap: Map<string, Tag>;
   onOpen: () => void;
 }) {
+  const { dropRef, isOver } = useDateDroppable(dateKey);
   return (
     <button
+      ref={dropRef}
       type="button"
       data-date={dateKey}
       aria-label={`${dateKey} 할 일 ${tasks.length}개`}
       onClick={onOpen}
       className={`flex min-h-16 flex-col items-start border-b border-r border-[#ece3e6] p-1.5 text-left text-sm transition-colors ${
         isToday ? "bg-brand-400 font-bold text-white" : "bg-white hover:bg-brand-50"
-      }`}
+      } ${isOver ? "relative z-10 ring-2 ring-brand-500 ring-inset" : ""}`}
     >
       <span className="pl-1">{day}</span>
       {/* 할 일 1개당 작은 색 네모 1개. 완료한 할 일은 회색 */}
