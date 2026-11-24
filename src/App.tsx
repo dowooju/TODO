@@ -2,11 +2,14 @@ import { useEffect } from "react";
 import { onDataChanged } from "./api";
 import { MonthCalendar } from "./components/MonthCalendar";
 import { SomedayPanel } from "./components/SomedayPanel";
+import { TaskDetail } from "./components/TaskDetail";
 import { TaskFormModal } from "./components/TaskFormModal";
+import { TopBar } from "./components/TopBar";
+import { WeekView } from "./components/WeekView";
 import { useApp } from "./store";
 
 export default function App() {
-  const { load, error, clearError } = useApp();
+  const { load, error, clearError, view, detailId } = useApp();
 
   useEffect(() => {
     load();
@@ -24,26 +27,21 @@ export default function App() {
 
   return (
     <div className="flex h-full flex-col">
-      <header className="relative flex h-14 shrink-0 items-center justify-center bg-brand-400 text-white">
-        <button type="button" aria-label="메뉴" className="absolute left-4 text-xl tracking-widest">
-          •••
-        </button>
-        <h1 className="text-lg font-bold">내 달력</h1>
-      </header>
+      <TopBar />
 
       <main className="flex min-h-0 flex-1 gap-6 p-6">
-        <div className="relative min-w-0 flex-1">
-          <MonthCalendar />
-        </div>
-        <div className="w-[300px] shrink-0">
-          <SomedayPanel />
-        </div>
+        <div className="relative min-w-0 flex-1">{view === "month" ? <MonthCalendar /> : <WeekView />}</div>
+        {/* 상세가 열려 있으면 언젠가 패널 자리를 대신한다 (F-4) */}
+        <div className="w-[300px] shrink-0">{detailId ? <TaskDetail taskId={detailId} /> : <SomedayPanel />}</div>
       </main>
 
       <TaskFormModal />
 
       {error && (
-        <div role="alert" className="fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-lg bg-gray-800 px-4 py-2 text-sm text-white shadow-lg">
+        <div
+          role="alert"
+          className="fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-lg bg-gray-800 px-4 py-2 text-sm text-white shadow-lg"
+        >
           {error}
         </div>
       )}
