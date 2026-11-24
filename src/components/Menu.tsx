@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { PALETTE } from "../lib/tagColors";
 import { useApp } from "../store";
+import { SettingsDialog } from "./SettingsDialog";
 import { TagManager } from "./TagManager";
 
-type Dialog = "tags" | null;
+type Dialog = "tags" | "settings" | null;
 
-/** 상단 바 왼쪽 ••• 메뉴: 태그 필터, 태그 관리 */
+/** 상단 바 왼쪽 ••• 메뉴: 태그 필터, 태그 관리, 설정 */
 export function Menu() {
   const { tags, tagFilter, setTagFilter } = useApp();
   const [open, setOpen] = useState(false);
@@ -62,11 +63,15 @@ export function Menu() {
           <button type="button" role="menuitem" className={item} onClick={() => show("tags")}>
             태그 관리…
           </button>
+          <button type="button" role="menuitem" className={item} onClick={() => show("settings")}>
+            설정…
+          </button>
         </div>
       )}
 
       <FilterChip />
       {dialog === "tags" && <TagManager onClose={() => setDialog(null)} />}
+      {dialog === "settings" && <SettingsDialog onClose={() => setDialog(null)} />}
     </div>
   );
 }

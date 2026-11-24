@@ -48,7 +48,18 @@ INSERT INTO tags (id, name, color, sort_order, created_at) VALUES
     ('tag-health', '운동', 'green',  5, datetime('now'));
 "#;
 
-const MIGRATIONS: &[&str] = &[V1_CORE];
+/// v2: 보낸 마감 알림 기록. 같은 마감 시각에 대해 알림을 두 번 보내지 않는다.
+/// 마감 시각이 바뀌면(due_at 이 달라지면) 새 알림으로 본다.
+const V2_NOTIFICATIONS: &str = r#"
+CREATE TABLE sent_notifications (
+    task_id  TEXT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+    due_at   TEXT NOT NULL,     -- YYYY-MM-DDTHH:MM (로컬 시각)
+    sent_at  TEXT NOT NULL,
+    PRIMARY KEY (task_id, due_at)
+);
+"#;
+
+const MIGRATIONS: &[&str] = &[V1_CORE, V2_NOTIFICATIONS];
 
 /// 백그라운드 작업(알림, 동기화)과 명령 처리기가 함께 쓰는 DB 핸들
 #[derive(Clone)]
