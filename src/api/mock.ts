@@ -8,6 +8,7 @@ interface MockData {
   tasks: Task[];
   tags: Tag[];
   settings: Settings;
+  autostart?: boolean;
 }
 
 const STORAGE_KEY = "todo-calendar-mock";
@@ -119,9 +120,11 @@ const handlers: Record<string, Handler> = {
   },
   get_settings: () => data.settings,
   save_settings: ({ settings }) => (data.settings = settings),
+  get_autostart: () => data.autostart ?? true,
+  set_autostart: ({ enabled }) => (data.autostart = enabled),
 };
 
-const READ_ONLY = new Set(["list_tasks", "list_tags", "get_settings"]);
+const READ_ONLY = new Set(["list_tasks", "list_tags", "get_settings", "get_autostart"]);
 
 export const mockBackend = {
   async call<T>(cmd: string, args: Record<string, unknown> = {}): Promise<T> {

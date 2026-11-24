@@ -30,6 +30,9 @@ export const api = {
 
   getSettings: () => call<Settings>("get_settings"),
   saveSettings: (settings: Settings) => call<Settings>("save_settings", { settings }),
+
+  getAutostart: () => call<boolean>("get_autostart"),
+  setAutostart: (enabled: boolean) => call<boolean>("set_autostart", { enabled }),
 };
 
 /** 백엔드에서 데이터가 바뀌었을 때(다른 창, 동기화 등) 알림을 받는다 */

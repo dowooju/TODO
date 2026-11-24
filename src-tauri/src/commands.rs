@@ -6,7 +6,7 @@
 use tauri::{AppHandle, Emitter, State};
 
 use crate::db::Db;
-use crate::error::AppResult;
+use crate::error::{AppError, AppResult};
 use crate::models::{Settings, Tag, TagInput, Task, TaskInput};
 use crate::repo;
 
@@ -92,4 +92,20 @@ pub fn save_settings(db: State<'_, Db>, settings: Settings) -> AppResult<Setting
     let conn = db.conn();
     repo::save_settings(&conn, &settings)?;
     repo::get_settings(&conn)
+}
+
+#[tauri::command]
+pub fn get_autostart(app: AppHandle) -> AppResult<bool> {
+    use tauri_plugin_autostart::ManagerExt;
+    app.autolaunch().is_enabled().map_err(|e| AppError::Other(format!("자동 실행 상태 확인 실패: {e}")))
+}
+
+#[tauri::command]
+pub fn set_autostart(app: AppHandle, enabled: bool) -> AppResult<bool> {
+    use tauri_plugin_autostart::ManagerExt;
+    let launcher = app.autolaunch();
+    let result = if enabled { launcher.enable() } else { launcher.disable() };
+    result.map_err(|e| AppError::Other(format!("자동 실행 설정 실패: {e}")))?;
+    log::info!("Windows 시작 시 자동 실행: {enabled}");
+    launcher.is_enabled().map_err(|e| AppError::Other(e.to_string()))
 }

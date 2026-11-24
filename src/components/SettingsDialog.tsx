@@ -1,10 +1,27 @@
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { api } from "../api";
 import { useApp } from "../store";
 import { Modal } from "./common";
 
-/** 설정: 마감 알림 켜기/끄기 (F-20) */
+/** 설정: 마감 알림 켜기/끄기 (F-20), Windows 시작 시 자동 실행 */
 export function SettingsDialog({ onClose }: { onClose: () => void }) {
-  const { settings, saveSettings } = useApp();
+  const { settings, saveSettings, showError } = useApp();
+  // 자동 실행 여부는 DB 가 아니라 Windows 레지스트리에 있으므로 따로 읽는다
+  const [autostart, setAutostart] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    api.getAutostart().then(setAutostart, showError);
+  }, [showError]);
+
+  const toggleAutostart = async (enabled: boolean) => {
+    setAutostart(enabled);
+    try {
+      setAutostart(await api.setAutostart(enabled));
+    } catch (e) {
+      showError(e);
+      setAutostart(!enabled);
+    }
+  };
 
   return (
     <Modal title="설정" onClose={onClose}>
@@ -19,6 +36,16 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
             onChange={(v) => saveSettings({ ...settings, notificationsEnabled: v })}
           />
         </Row>
+        <Row
+          title="Windows 시작 시 자동 실행"
+          desc="컴퓨터를 켜면 트레이에서 조용히 시작해요. 앱이 꺼져 있으면 마감 알림을 받을 수 없어요."
+        >
+          <Toggle label="Windows 시작 시 자동 실행" checked={!!autostart} onChange={toggleAutostart} />
+        </Row>
+        <p className="pt-3 text-xs leading-5 text-gray-400">
+          창을 닫아도 앱은 작업 표시줄 오른쪽 트레이에 남아 알림을 보내요. 완전히 끄려면 트레이 아이콘을 오른쪽
+          클릭해 "종료" 를 누르세요.
+        </p>
       </div>
     </Modal>
   );
