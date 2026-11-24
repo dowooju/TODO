@@ -59,7 +59,26 @@ CREATE TABLE sent_notifications (
 );
 "#;
 
-const MIGRATIONS: &[&str] = &[V1_CORE, V2_NOTIFICATIONS];
+/// v3: 구글 캘린더 동기화
+/// - tasks.google_etag: 마지막으로 구글과 주고받은 일정 etag. NULL 이면 구글에 올라가 있지 않음
+/// - outbox: 구글로 보낼 변경 대기열 (Transactional Outbox). 할 일 변경과 같은 트랜잭션에서 쌓인다.
+///   할 일 하나당 최신 상태만 의미 있으므로 새로 쌓을 때 같은 task_id 의 이전 항목은 지운다.
+const V3_GOOGLE_SYNC: &str = r#"
+ALTER TABLE tasks ADD COLUMN google_etag TEXT;
+
+CREATE TABLE outbox (
+    id               INTEGER PRIMARY KEY AUTOINCREMENT,
+    task_id          TEXT NOT NULL,
+    op               TEXT NOT NULL CHECK (op IN ('upsert', 'delete')),
+    created_at       TEXT NOT NULL,
+    attempts         INTEGER NOT NULL DEFAULT 0,
+    next_attempt_at  TEXT NOT NULL,   -- RFC3339 UTC, 재시도 시각 (지수 백오프)
+    last_error       TEXT
+);
+CREATE INDEX idx_outbox_task ON outbox(task_id);
+"#;
+
+const MIGRATIONS: &[&str] = &[V1_CORE, V2_NOTIFICATIONS, V3_GOOGLE_SYNC];
 
 /// 백그라운드 작업(알림, 동기화)과 명령 처리기가 함께 쓰는 DB 핸들
 #[derive(Clone)]

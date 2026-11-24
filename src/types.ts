@@ -40,6 +40,12 @@ export interface GoogleStatus {
   configured: boolean;
   loggedIn: boolean;
   account: string | null;
+  /** 마지막으로 동기화에 성공한 시각 (ISO) */
+  lastSyncAt?: string | null;
+  /** 마지막 동기화 오류. 성공하면 비워진다 */
+  lastError?: string | null;
+  /** 아직 구글로 보내지 못한 변경 수 */
+  pending?: number;
 }
 
 export interface Settings {

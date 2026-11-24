@@ -37,12 +37,14 @@ export const api = {
   googleStatus: () => call<GoogleStatus>("google_status"),
   googleLogin: () => call<GoogleStatus>("google_login"),
   googleLogout: () => call<GoogleStatus>("google_logout"),
+  googleSyncNow: () => call<void>("google_sync_now"),
 };
 
-/** 구글 로그인 상태가 바뀌었을 때 */
+/** 구글 로그인 상태나 동기화 상태가 바뀌었을 때 */
 export async function onGoogleAuthChanged(handler: () => void): Promise<() => void> {
-  if (isTauri) return listen("google-auth-changed", handler);
-  return () => {};
+  if (!isTauri) return () => {};
+  const offs = await Promise.all([listen("google-auth-changed", handler), listen("sync-status", handler)]);
+  return () => offs.forEach((off) => off());
 }
 
 /** 백엔드에서 데이터가 바뀌었을 때(다른 창, 동기화 등) 알림을 받는다 */

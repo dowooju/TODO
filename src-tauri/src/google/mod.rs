@@ -1,6 +1,7 @@
 //! 구글 캘린더 연동 (F-23 ~ F-28)
 
 pub mod auth;
+pub mod calendar;
 
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, State};
@@ -8,6 +9,7 @@ use tauri::{AppHandle, Emitter, State};
 use crate::db::Db;
 use crate::error::{AppError, AppResult};
 use crate::repo;
+use crate::sync::{self, outbox, SyncHandle, KEY_LAST_ERROR, KEY_LAST_SYNC};
 use auth::{http, GoogleAuth};
 
 pub const AUTH_CHANGED: &str = "google-auth-changed";
@@ -21,14 +23,27 @@ pub struct GoogleStatus {
     pub logged_in: bool,
     /// 기본 캘린더 이름 (보통 구글 계정 이메일)
     pub account: Option<String>,
+    /// 마지막으로 동기화에 성공한 시각 (RFC3339)
+    pub last_sync_at: Option<String>,
+    /// 마지막 동기화 오류 (오프라인 등). 성공하면 비워진다
+    pub last_error: Option<String>,
+    /// 아직 구글로 보내지 못한 변경 수
+    pub pending: i64,
 }
 
 pub fn status(db: &Db, auth: &GoogleAuth) -> AppResult<GoogleStatus> {
     let logged_in = auth.is_logged_in();
+    let conn = db.conn();
+    let setting = |k: &str| -> AppResult<Option<String>> {
+        Ok(repo::get_setting(&conn, k)?.filter(|v| !v.is_empty()))
+    };
     Ok(GoogleStatus {
         configured: auth::client_config().is_some(),
         logged_in,
-        account: if logged_in { repo::get_setting(&db.conn(), "google_account")? } else { None },
+        account: if logged_in { setting("google_account")? } else { None },
+        last_sync_at: if logged_in { setting(KEY_LAST_SYNC)? } else { None },
+        last_error: if logged_in { setting(KEY_LAST_ERROR)? } else { None },
+        pending: if logged_in { outbox::pending_count(&conn)? } else { 0 },
     })
 }
 
@@ -68,6 +83,8 @@ pub async fn google_login(app: AppHandle) -> AppResult<GoogleStatus> {
             Ok(account) => repo::put_setting(&db.conn(), "google_account", &account)?,
             Err(e) => log::warn!("계정 이름을 가져오지 못함: {e}"),
         }
+        sync::on_login(&db)?;
+        handle.state::<SyncHandle>().sync_now();
         let _ = handle.emit(AUTH_CHANGED, ());
         status(&db, &auth)
     })
@@ -84,9 +101,16 @@ pub async fn google_logout(app: AppHandle) -> AppResult<GoogleStatus> {
         let db = handle.state::<Db>();
         auth.logout()?;
         repo::put_setting(&db.conn(), "google_account", "")?;
+        sync::on_logout(&db)?;
         let _ = handle.emit(AUTH_CHANGED, ());
         status(&db, &auth)
     })
     .await
     .map_err(|e| AppError::Other(e.to_string()))?
+}
+
+/// 설정 창의 "지금 동기화" (F-26 의 주기와 별개로 바로 받기)
+#[tauri::command]
+pub fn google_sync_now(sync: State<'_, SyncHandle>) {
+    sync.sync_now();
 }

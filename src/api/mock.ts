@@ -127,6 +127,7 @@ const handlers: Record<string, Handler> = {
   google_status: () => data.google ?? { configured: false, loggedIn: false, account: null },
   google_login: () => (data.google = { configured: true, loggedIn: true, account: "me@example.com" }),
   google_logout: () => (data.google = { configured: true, loggedIn: false, account: null }),
+  google_sync_now: () => undefined,
 };
 
 const READ_ONLY = new Set(["list_tasks", "list_tags", "get_settings", "get_autostart", "google_status"]);

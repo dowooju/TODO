@@ -5,6 +5,7 @@ mod google;
 mod models;
 mod notifier;
 mod repo;
+mod sync;
 mod tray;
 
 use tauri::{Manager, RunEvent};
@@ -48,7 +49,10 @@ pub fn run() {
 
             init_autostart(app.handle(), &db);
             tray::setup_tray(app.handle())?;
-            notifier::spawn(app.handle().clone(), db);
+            notifier::spawn(app.handle().clone(), db.clone());
+            // 구글 동기화 워커: 앱 실행 시 바로 한 번 받고, 이후 5분마다 + 변경 즉시 (F-26)
+            let sync = sync::spawn(app.handle().clone(), db);
+            app.manage(sync);
 
             // 부팅 시 자동 실행이면 트레이에서 조용히 시작, 직접 실행이면 창을 띄운다
             if !std::env::args().any(|a| a == AUTOSTART_ARG) {
@@ -76,6 +80,7 @@ pub fn run() {
             google::google_status,
             google::google_login,
             google::google_logout,
+            google::google_sync_now,
         ])
         .build(tauri::generate_context!())
         .expect("앱을 초기화하지 못했습니다");

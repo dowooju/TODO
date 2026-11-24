@@ -3,12 +3,13 @@
 //! 데이터가 바뀌면 `data-changed` 이벤트를 보내서, 열려 있는 창이 목록을 다시 불러오게 한다.
 //! (백그라운드 동기화가 데이터를 바꿀 때도 같은 이벤트를 쓴다.)
 
-use tauri::{AppHandle, Emitter, State};
+use tauri::{AppHandle, Emitter, Manager, State};
 
 use crate::db::Db;
 use crate::error::{AppError, AppResult};
 use crate::models::{Settings, Tag, TagInput, Task, TaskInput};
 use crate::repo;
+use crate::sync::{outbox, SyncHandle};
 
 pub const DATA_CHANGED: &str = "data-changed";
 
@@ -21,39 +22,69 @@ pub fn list_tasks(db: State<'_, Db>) -> AppResult<Vec<Task>> {
     repo::list_tasks(&db.conn())
 }
 
+/// 할 일 하나를 바꾸고, 같은 트랜잭션에서 구글로 보낼 변경을 outbox 에 쌓은 뒤 동기화 워커를 깨운다.
+/// `f` 는 (바뀐 할 일의 ID, 바뀐 뒤 상태) 를 돌려준다. 삭제면 바뀐 뒤 상태는 None.
+fn mutate_task<T>(
+    app: &AppHandle,
+    db: &Db,
+    known_id: Option<&str>,
+    f: impl FnOnce(&rusqlite::Connection) -> AppResult<(String, Option<Task>, T)>,
+) -> AppResult<T> {
+    let result = {
+        let mut conn = db.conn();
+        let tx = conn.transaction()?;
+        let before = match known_id {
+            Some(id) => repo::find_task(&tx, id)?,
+            None => None,
+        };
+        let (id, after, result) = f(&tx)?;
+        outbox::enqueue_change(&tx, &id, before.as_ref(), after.as_ref())?;
+        tx.commit()?;
+        result
+    };
+    notify_changed(app);
+    app.state::<SyncHandle>().wake();
+    Ok(result)
+}
+
 #[tauri::command]
 pub fn create_task(app: AppHandle, db: State<'_, Db>, input: TaskInput) -> AppResult<Task> {
-    let task = repo::create_task(&db.conn(), input)?;
-    notify_changed(&app);
-    Ok(task)
+    mutate_task(&app, &db, None, |c| {
+        let t = repo::create_task(c, input)?;
+        Ok((t.id.clone(), Some(t.clone()), t))
+    })
 }
 
 #[tauri::command]
 pub fn update_task(app: AppHandle, db: State<'_, Db>, id: String, input: TaskInput) -> AppResult<Task> {
-    let task = repo::update_task(&db.conn(), &id, input)?;
-    notify_changed(&app);
-    Ok(task)
+    mutate_task(&app, &db, Some(&id), |c| {
+        let t = repo::update_task(c, &id, input)?;
+        Ok((id.clone(), Some(t.clone()), t))
+    })
 }
 
 #[tauri::command]
 pub fn set_task_done(app: AppHandle, db: State<'_, Db>, id: String, done: bool) -> AppResult<Task> {
-    let task = repo::set_task_done(&db.conn(), &id, done)?;
-    notify_changed(&app);
-    Ok(task)
+    mutate_task(&app, &db, Some(&id), |c| {
+        let t = repo::set_task_done(c, &id, done)?;
+        Ok((id.clone(), Some(t.clone()), t))
+    })
 }
 
 #[tauri::command]
 pub fn set_task_date(app: AppHandle, db: State<'_, Db>, id: String, date: Option<String>) -> AppResult<Task> {
-    let task = repo::set_task_date(&db.conn(), &id, date)?;
-    notify_changed(&app);
-    Ok(task)
+    mutate_task(&app, &db, Some(&id), |c| {
+        let t = repo::set_task_date(c, &id, date)?;
+        Ok((id.clone(), Some(t.clone()), t))
+    })
 }
 
 #[tauri::command]
 pub fn delete_task(app: AppHandle, db: State<'_, Db>, id: String) -> AppResult<()> {
-    repo::delete_task(&db.conn(), &id)?;
-    notify_changed(&app);
-    Ok(())
+    mutate_task(&app, &db, Some(&id), |c| {
+        repo::delete_task(c, &id)?;
+        Ok((id.clone(), None, ()))
+    })
 }
 
 #[tauri::command]
