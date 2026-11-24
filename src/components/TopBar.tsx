@@ -1,6 +1,7 @@
 import { addDays } from "date-fns";
 import { fromKey, toKey, weekLabel } from "../lib/dates";
 import { useApp } from "../store";
+import { Menu } from "./Menu";
 
 /** 상단 핑크 바. 월간 화면은 "내 달력", 주간 화면은 "11월 4주차" + 이전/다음 주 */
 export function TopBar() {
@@ -9,9 +10,7 @@ export function TopBar() {
 
   return (
     <header className="relative flex h-14 shrink-0 items-center justify-center bg-brand-400 text-white">
-      <button type="button" aria-label="메뉴" className="absolute left-4 text-xl tracking-widest">
-        •••
-      </button>
+      <Menu />
 
       {view === "month" ? (
         <h1 className="text-lg font-bold">내 달력</h1>

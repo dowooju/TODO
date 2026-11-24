@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { startOfMonth } from "date-fns";
 import { api } from "./api";
 import { fromKey, todayKey } from "./lib/dates";
-import type { Settings, Tag, Task, TaskInput } from "./types";
+import type { Settings, Tag, TagInput, Task, TaskInput } from "./types";
 
 /** 할 일 추가/수정 폼 상태 */
 export type FormState = { mode: "create"; date: string | null } | { mode: "edit"; taskId: string } | null;
@@ -43,6 +43,10 @@ interface AppState {
   moveTask: (id: string, date: string | null) => Promise<void>;
   deleteTask: (id: string) => Promise<void>;
   saveSettings: (s: Settings) => Promise<void>;
+
+  createTag: (input: TagInput) => Promise<void>;
+  updateTag: (id: string, input: TagInput) => Promise<void>;
+  deleteTag: (id: string) => Promise<void>;
 }
 
 export const useApp = create<AppState>((set, get) => {
@@ -123,6 +127,10 @@ export const useApp = create<AppState>((set, get) => {
       return mutate(() => api.deleteTask(id));
     },
     saveSettings: (settings) => mutate(() => api.saveSettings(settings)),
+
+    createTag: (input) => mutate(() => api.createTag(input)),
+    updateTag: (id, input) => mutate(() => api.updateTag(id, input)),
+    deleteTag: (id) => mutate(() => api.deleteTag(id)),
   };
 });
 

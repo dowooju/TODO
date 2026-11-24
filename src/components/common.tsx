@@ -50,7 +50,7 @@ export function Modal({ title, onClose, children }: { title: string; onClose: ()
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/25"
       onMouseDown={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div role="dialog" aria-label={title} className="w-[440px] max-w-[92vw] rounded-2xl bg-white p-6 shadow-xl">
+      <div role="dialog" aria-label={title} className="w-[440px] max-w-[92vw] rounded-2xl bg-white p-6 text-left font-normal text-gray-800 shadow-xl">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-bold">{title}</h2>
           <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-700" aria-label="닫기">
