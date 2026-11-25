@@ -3,7 +3,8 @@ dist/
 src-tauri/target/
 src-tauri/gen/schemas/
 .env
-.env.local
+.env.*
+*.env.txt
 *.log
 .DS_Store
 .vscode/*
