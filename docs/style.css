@@ -1,0 +1,42 @@
+body {
+  margin: 0 auto;
+  max-width: 760px;
+  padding: 48px 24px 64px;
+  font-family: "Pretendard", "Malgun Gothic", system-ui, sans-serif;
+  line-height: 1.75;
+  color: #2a2a2a;
+  background: #fff;
+}
+header {
+  text-align: center;
+  padding-bottom: 24px;
+  border-bottom: 2px solid #fbe3ec;
+}
+h1 {
+  margin: 8px 0 4px;
+  color: #d1608a;
+}
+h2 {
+  margin-top: 32px;
+  font-size: 1.15rem;
+}
+.lead {
+  color: #666;
+  margin: 0;
+}
+a {
+  color: #b84a73;
+}
+code {
+  background: #fdf2f6;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 0.9em;
+}
+footer {
+  margin-top: 48px;
+  padding-top: 16px;
+  border-top: 1px solid #eee;
+  text-align: center;
+  font-size: 0.9rem;
+}
